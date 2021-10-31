@@ -1,3 +1,5 @@
+import { CorsHttpMethod, HttpApi, HttpMethod } from '@aws-cdk/aws-apigatewayv2';
+import { LambdaProxyIntegration } from '@aws-cdk/aws-apigatewayv2-integrations';
 import { PolicyStatement } from '@aws-cdk/aws-iam';
 import { Runtime } from '@aws-cdk/aws-lambda';
 import { NodejsFunction } from '@aws-cdk/aws-lambda-nodejs';
@@ -40,9 +42,33 @@ export class UdemyCdkTutStack extends cdk.Stack {
     getPhotos.addToRolePolicy(bucketContainerPermissions);
     getPhotos.addToRolePolicy(bucketPermissions);
 
+    const httpApi = new HttpApi(this, 'UdemyCdkTutHttpApi', {
+      corsPreflight: {
+        allowOrigins: ['*'],
+        allowMethods: [CorsHttpMethod.GET],
+      },
+      apiName: 'photo-api',
+      createDefaultStage: true,
+    });
+
+    const photosIntegration = new LambdaProxyIntegration({
+      handler: getPhotos,
+    });
+
+    httpApi.addRoutes({
+      integration: photosIntegration,
+      path: '/photos',
+      methods: [HttpMethod.GET],
+    });
+
     new CfnOutput(this, 'UdemyCdkTutBucketNameExport', {
       value: bucket.bucketName,
       exportName: 'UdemyCdkTutBucketName',
+    });
+
+    new CfnOutput(this, 'UdemyCdkTutApi', {
+      value: httpApi.url!,
+      exportName: 'UdemyCdkTutApiEndPoint',
     });
   }
 }
