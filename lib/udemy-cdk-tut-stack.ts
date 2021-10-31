@@ -1,3 +1,4 @@
+import { PolicyStatement } from '@aws-cdk/aws-iam';
 import { Runtime } from '@aws-cdk/aws-lambda';
 import { NodejsFunction } from '@aws-cdk/aws-lambda-nodejs';
 import { Bucket, BucketEncryption } from '@aws-cdk/aws-s3';
@@ -27,6 +28,17 @@ export class UdemyCdkTutStack extends cdk.Stack {
         PHOTO_BUCKET_NAME: bucket.bucketName,
       },
     });
+
+    const bucketContainerPermissions = new PolicyStatement();
+    bucketContainerPermissions.addResources(bucket.bucketArn);
+    bucketContainerPermissions.addActions('s3:ListBucket');
+
+    const bucketPermissions = new PolicyStatement();
+    bucketPermissions.addResources(`${bucket.bucketArn}/*`);
+    bucketPermissions.addActions('s3:GetObject', 's3:PutObject');
+
+    getPhotos.addToRolePolicy(bucketContainerPermissions);
+    getPhotos.addToRolePolicy(bucketPermissions);
 
     new CfnOutput(this, 'UdemyCdkTutBucketNameExport', {
       value: bucket.bucketName,

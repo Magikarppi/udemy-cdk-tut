@@ -12,8 +12,8 @@ async function generateUrl(
   object: S3.Object
 ): Promise<{ filename: string; url: string }> {
   const url = await s3.getSignedUrlPromise('getObject', {
-    bucketName,
-    Key: object.Key,
+    Bucket: bucketName,
+    Key: object.Key!,
     // Expires: (24 * 60 * 60)
   });
   return {
@@ -32,7 +32,7 @@ async function getPhotos(
   }
   try {
     const { Contents: results } = await s3
-      .listObjectsV2({ Bucket: bucketName })
+      .listObjects({ Bucket: bucketName })
       .promise();
     if (results) {
       const photos = await Promise.all(
