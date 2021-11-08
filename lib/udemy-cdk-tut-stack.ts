@@ -1,10 +1,11 @@
 import { CorsHttpMethod, HttpApi, HttpMethod } from '@aws-cdk/aws-apigatewayv2';
 import { LambdaProxyIntegration } from '@aws-cdk/aws-apigatewayv2-integrations';
 import { PolicyStatement } from '@aws-cdk/aws-iam';
-import { Runtime } from '@aws-cdk/aws-lambda';
+import { Runtime, S3Code } from '@aws-cdk/aws-lambda';
 import { NodejsFunction } from '@aws-cdk/aws-lambda-nodejs';
 import { Bucket, BucketEncryption } from '@aws-cdk/aws-s3';
 import { BucketDeployment, Source } from '@aws-cdk/aws-s3-deployment';
+import { CloudFrontWebDistribution } from '@aws-cdk/aws-cloudfront';
 import * as cdk from '@aws-cdk/core';
 import { CfnOutput } from '@aws-cdk/core';
 import * as path from 'path';
@@ -21,6 +22,31 @@ export class UdemyCdkTutStack extends cdk.Stack {
       sources: [Source.asset(path.join(__dirname, '..', 'photos'))],
       destinationBucket: bucket,
     });
+
+    const websiteBucket = new Bucket(this, 'UdemyCdkTutWebsiteBucket', {
+      websiteIndexDocument: 'index.html',
+      publicReadAccess: true,
+    });
+
+    new BucketDeployment(this, 'UdemyCdkTutWebsiteDeploy', {
+      sources: [Source.asset(path.join(__dirname, '..', 'frontend', 'build'))],
+      destinationBucket: websiteBucket,
+    });
+
+    const cloudFront = new CloudFrontWebDistribution(
+      this,
+      'UdemyCdkTutDistribution',
+      {
+        originConfigs: [
+          {
+            s3OriginSource: {
+              s3BucketSource: websiteBucket,
+            },
+            behaviors: [{ isDefaultBehavior: true }],
+          },
+        ],
+      }
+    );
 
     const getPhotos = new NodejsFunction(this, 'GetPhotosLambda', {
       handler: 'getPhotos',
@@ -69,6 +95,16 @@ export class UdemyCdkTutStack extends cdk.Stack {
     new CfnOutput(this, 'UdemyCdkTutApi', {
       value: httpApi.url!,
       exportName: 'UdemyCdkTutApiEndPoint',
+    });
+
+    new CfnOutput(this, 'UdemyCdkTutWebsiteBucketNameExport', {
+      value: websiteBucket.bucketName,
+      exportName: 'UdemyCdkTutWebsiteBucketName',
+    });
+
+    new CfnOutput(this, 'UdemyCdkTutWebsiteUrl', {
+      value: cloudFront.distributionDomainName,
+      exportName: 'UdemyCdkTutUrl',
     });
   }
 }
